@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Database PGRI Sumedang</title>
+    <link rel="icon" type="image/png" href="https://ktadigitalpgri.org/assets/dist/img/logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --abu-tua: #333;
+            --orange-pgri: #ff9900;
+            --orange-glossy: linear-gradient(180deg, #ff9900 0%, #cc7a00 100%);
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; }
+        
+        /* Sidebar Styling */
+        .sidebar { height: 100%; width: 250px; position: fixed; z-index: 999; top: 0; left: -250px; background-color: var(--abu-tua); transition: 0.4s; padding-top: 80px; }
+        .sidebar.open { left: 0; }
+        .sidebar button { width: 100%; padding: 15px 25px; border: none; background: transparent; color: #bdc3c7; text-align: left; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 15px; transition: 0.3s; border-bottom: 1px solid #444; }
+        .sidebar button:hover, .sidebar button.active { background-color: var(--orange-pgri); color: white; }
+
+        .navbar-top { background: white; padding: 15px 20px; font-weight: bold; font-size: 1.2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        .navbar-sub { background: var(--orange-glossy); height: 6px; width: 100%; }
+        
+        /* Login Page */
+        #login-page { background: #f0f2f5; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        
+        /* Form & Table */
+        .form-card { max-width: 700px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .img-table { width: 45px; height: 55px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; transition: 0.3s; cursor: zoom-in; }
+        .img-table:hover { transform: scale(3); z-index: 50; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="login-page">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center border-t-4 border-orange-500">
+            <img src="https://ktadigitalpgri.org/assets/dist/img/logo.png" class="w-20 mx-auto mb-4">
+            <h2 class="text-xl font-bold mb-1 text-gray-800">Sistem Informasi PGRI</h2>
+            <p class="text-gray-500 text-sm mb-6">Kabupaten Sumedang</p>
+            <input type="text" id="username" placeholder="Username" class="w-full border p-3 rounded-lg mb-4 outline-none focus:ring-2 focus:ring-orange-500 bg-gray-50">
+            <input type="password" id="password" placeholder="Password" class="w-full border p-3 rounded-lg mb-6 outline-none focus:ring-2 focus:ring-orange-500 bg-gray-50">
+            <button onclick="login()" class="w-full bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition shadow-lg">MASUK KE SISTEM</button>
+            <p id="login-error" class="text-red-500 mt-4 text-xs hidden font-semibold">Username atau Password salah!</p>
+        </div>
+    </div>
+
+    <div id="main-app" style="display: none;">
+        <div class="navbar-top">
+            <div class="cursor-pointer text-2xl mr-4 text-gray-700" onclick="toggleSidebar()"><i class="fas fa-bars"></i></div>
+            <span class="text-gray-800">Database Anggota PGRI Sumedang</span>
+        </div>
+        <div class="navbar-sub"></div>
+
+        <div id="mySidebar" class="sidebar">
+            <button id="btn-home" class="active" onclick="showPage('home')"><i class="fas fa-home"></i> Beranda</button>
+            <button id="btn-input" onclick="showPage('input')"><i class="fas fa-user-plus"></i> Input Data</button>
+            <button id="btn-rekap" onclick="showPage('rekap'); muatRekap();"><i class="fas fa-database"></i> Rekap Data</button>
+            <div class="absolute bottom-5 w-full">
+                <button onclick="logout()" class="text-red-400 border-none"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+            </div>
+        </div>
+
+        <div id="main-container" class="p-4 md:p-8">
+            <div id="page-home" class="text-center py-10">
+                <img src="https://ktadigitalpgri.org/assets/dist/img/logo.png" class="mx-auto w-40 mb-6 drop-shadow-md">
+                <h1 class="text-3xl font-extrabold text-gray-800">Selamat Datang, Admin</h1>
+                <p class="text-gray-500 mt-2 max-w-md mx-auto">Silahkan gunakan menu sidebar untuk mengelola database anggota PGRI Kabupaten Sumedang.</p>
+            </div>
+
+            <div id="page-input" class="form-card" style="display:none;">
+                <h2 class="text-xl font-bold mb-6 text-gray-800 border-b pb-3"><i class="fas fa-edit mr-2 text-orange-500"></i>Form Input Anggota</h2>
+                <form id="formAnggota" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="text-xs font-bold text-gray-600 uppercase">Nama Lengkap & Gelar</label><input type="text" id="nama" class="w-full border p-2.5 rounded-lg bg-gray-50" required></div>
+                        <div><label class="text-xs font-bold text-gray-600 uppercase">NPA PGRI</label><input type="text" id="npa" class="w-full border p-2.5 rounded-lg bg-gray-50" required></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="text-xs font-bold text-gray-600 uppercase">Agama</label>
+                            <select id="agama" class="w-full border p-2.5 rounded-lg bg-gray-50">
+                                <option value="ISLAM">ISLAM</option>
+                                <option value="KRISTEN">KRISTEN</option>
+                                <option value="KATOLIK">KATOLIK</option>
+                                <option value="HINDU">HINDU</option>
+                                <option value="BUDHA">BUDHA</option>
+                            </select>
+                        </div>
+                        <div><label class="text-xs font-bold text-gray-600 uppercase">Status Kepegawaian</label>
+                            <select id="status" class="w-full border p-2.5 rounded-lg bg-gray-50">
+                                <option value="PNS">PNS</option>
+                                <option value="PPPK">PPPK</option>
+                                <option value="GTT/PTT">GTT/PTT</option>
+                                <option value="HONORER">HONORER</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div><label class="text-xs font-bold text-gray-600 uppercase">Unit Kerja (Sekolah/Instansi)</label><input type="text" id="unit_kerja" class="w-full border p-2.5 rounded-lg bg-gray-50" required placeholder="Contoh: SDN Sumedang Utara"></div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 uppercase">Cabang PGRI (Kecamatan)</label>
+                        <select id="cabang" class="w-full border p-2.5 rounded-lg bg-gray-50" required>
+                            <option value="">-- Pilih Cabang --</option>
+                            <option value="Sumedang Utara">Sumedang Utara</option><option value="Sumedang Selatan">Sumedang Selatan</option><option value="Cimalaka">Cimalaka</option><option value="Tanjungsari">Tanjungsari</option><option value="Jatinangor">Jatinangor</option><option value="Situraja">Situraja</option><option value="Cisitu">Cisitu</option><option value="Darmaraja">Darmaraja</option><option value="Cibugel">Cibugel</option><option value="Wado">Wado</option><option value="Jatinunggal">Jatinunggal</option><option value="Jatigede">Jatigede</option><option value="Tomo">Tomo</option><option value="Ujungjaya">Ujungjaya</option><option value="Conggeang">Conggeang</option><option value="Paseh">Paseh</option><option value="Cisarua">Cisarua</option><option value="Ganeas">Ganeas</option><option value="Tanjungkerta">Tanjungkerta</option><option value="Tanjungmedar">Tanjungmedar</option><option value="Buahdua">Buahdua</option><option value="Rancakalong">Rancakalong</option><option value="Pamulihan">Pamulihan</option><option value="Sukasari">Sukasari</option><option value="Cimanggung">Cimanggung</option><option value="Surian">Surian</option>
+                        </select>
+                    </div>
+                    <div><label class="text-xs font-bold text-gray-600 uppercase">Unggah Foto (3x4),png, 50-100 kb</label><input type="file" id="foto" accept="image/*" class="w-full border p-2 rounded-lg bg-gray-50" required></div>
+                    
+                    <button type="button" onclick="prosesSimpan()" id="btnSubmit" class="w-full bg-green-600 text-white font-bold py-3.5 rounded-lg hover:bg-green-700 transition shadow-md">SIMPAN DATA KE CLOUD</button>
+                </form>
+            </div>
+
+            <div id="page-rekap" style="display:none;" class="max-w-7xl mx-auto">
+                
+                <div class="flex flex-wrap gap-2 mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1 ml-1">Filter Cabang</label>
+                        <select id="searchCabang" onchange="filterTabel()" class="w-full border border-gray-200 rounded-lg py-1.5 px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50">
+                            <option value="">Semua Cabang</option>
+                            <option value="Sumedang Utara">Sumedang Utara</option><option value="Sumedang Selatan">Sumedang Selatan</option><option value="Cimalaka">Cimalaka</option><option value="Tanjungsari">Tanjungsari</option><option value="Jatinangor">Jatinangor</option><option value="Situraja">Situraja</option><option value="Cisitu">Cisitu</option><option value="Darmaraja">Darmaraja</option><option value="Cibugel">Cibugel</option><option value="Wado">Wado</option><option value="Jatinunggal">Jatinunggal</option><option value="Jatigede">Jatigede</option><option value="Tomo">Tomo</option><option value="Ujungjaya">Ujungjaya</option><option value="Conggeang">Conggeang</option><option value="Paseh">Paseh</option><option value="Cisarua">Cisarua</option><option value="Ganeas">Ganeas</option><option value="Tanjungkerta">Tanjungkerta</option><option value="Tanjungmedar">Tanjungmedar</option><option value="Buahdua">Buahdua</option><option value="Rancakalong">Rancakalong</option><option value="Pamulihan">Pamulihan</option><option value="Sukasari">Sukasari</option><option value="Cimanggung">Cimanggung</option><option value="Surian">Surian</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1 ml-1">Cari Nama</label>
+                        <input type="text" id="searchNama" onkeyup="filterTabel()" class="w-full border border-gray-200 rounded-lg py-1.5 px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" placeholder="Ketik nama...">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="muatRekap()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-lg h-[36px] w-[36px]"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm" id="tabelAnggota">
+                            <thead class="bg-gray-800 text-white">
+                                <tr>
+                                    <th class="p-3 text-center">No</th>
+                                    <th class="p-3 text-left">Nama Anggota</th>
+                                    <th class="p-3">NPA</th>
+                                    <th class="p-3">Agama</th>
+                                    <th class="p-3">Foto</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3 text-left">Unit Kerja</th>
+                                    <th class="p-3 text-left">Cabang</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabel-rekap-body" class="text-gray-700">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="flex justify-between mt-4 items-center px-2">
+                    <p id="counterData" class="text-xs font-bold text-gray-500 uppercase tracking-widest">Memuat data...</p>
+                    <button onclick="eksporKeExcel()" class="bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-800 flex items-center gap-2">
+                        <i class="fas fa-file-excel"></i> EXPORT EXCEL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GANTI DENGAN URL WEB APP ANDA
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEscr7mHwjEpbZTDCpGjryP5QCrexVAEOoSAfIKHMcOHfEVV64CCtJ0dS5Vf3LHx5D/exec"; 
+
+        function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if(user === "admin" && pass === "pgri123") {
+                document.getElementById('login-page').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        }
+
+        function logout() { location.reload(); }
+        function toggleSidebar() { document.getElementById("mySidebar").classList.toggle("open"); }
+
+        function showPage(page) {
+            const pages = ['home', 'input', 'rekap'];
+            pages.forEach(p => document.getElementById('page-' + p).style.display = (p === page) ? 'block' : 'none');
+            document.querySelectorAll('.sidebar button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + page).classList.add('active');
+            if(window.innerWidth < 768) document.getElementById("mySidebar").classList.remove("open");
+        }
+
+        async function prosesSimpan() {
+            const btn = document.getElementById('btnSubmit');
+            const file = document.getElementById('foto').files[0];
+            if(!file || !document.getElementById('npa').value) return alert("Data belum lengkap!");
+
+            btn.disabled = true; btn.innerText = "Mengunggah Data...";
+            const base64 = await new Promise(r => { 
+                const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(file); 
+            });
+
+            const payload = { 
+                npa: document.getElementById('npa').value, 
+                nama: document.getElementById('nama').value,
+                agama: document.getElementById('agama').value,
+                status: document.getElementById('status').value,
+                unit: document.getElementById('unit_kerja').value,
+                cabang: document.getElementById('cabang').value,
+                foto: base64 
+            };
+
+            try {
+                const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                const hasil = await response.json();
+                if (hasil.result === "success") {
+                    alert("Data Berhasil Disimpan!");
+                    document.getElementById('formAnggota').reset();
+                    showPage('rekap'); muatRekap();
+                }
+            } catch (e) { alert("Terjadi kesalahan koneksi!"); }
+            finally { btn.disabled = false; btn.innerText = "SIMPAN DATA KE CLOUD"; }
+        }
+
+        async function muatRekap() {
+            const tbody = document.getElementById('tabel-rekap-body');
+            tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-gray-400 italic">Sedang sinkronisasi data...</td></tr>';
+            
+            try {
+                const res = await fetch(SCRIPT_URL);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                
+                data.forEach((row, i) => {
+                    // Mapping urutan kolom: B:NPA(1), C:Nama(2), D:Agama(3), E:Foto(4), F:Status(5), G:Unit(6), H:Cabang(7)
+                    let fotoUrl = row[4];
+                    let fileId = "";
+                    if (fotoUrl && fotoUrl.includes("id=")) fileId = fotoUrl.split("id=")[1].split("&")[0];
+                    else if (fotoUrl && fotoUrl.includes("/file/d/")) fileId = fotoUrl.split("/file/d/")[1].split("/")[0];
+                    
+                    let thumb = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w200` : "https://via.placeholder.com/40x55?text=X";
+
+                    tbody.innerHTML += `
+                    <tr class="hover:bg-orange-50 border-b transition">
+                        <td class="p-3 text-center text-gray-400 text-xs">${i+1}</td>
+                        <td class="p-3 font-bold text-gray-700">${row[2]}</td>
+                        <td class="p-3 text-center font-mono text-xs">${row[1]}</td>
+                        <td class="p-3 text-center text-xs">${row[3]}</td>
+                        <td class="p-3 text-center">
+                            <img src="${thumb}" class="img-table mx-auto" onerror="this.src='https://via.placeholder.com/40x55?text=Error'">
+                        </td>
+                        <td class="p-3 text-center"><span class="px-2 py-1 bg-gray-100 rounded text-[10px] font-bold">${row[5]}</span></td>
+                        <td class="p-3 text-xs">${row[6]}</td>
+                        <td class="p-3 text-xs font-semibold text-orange-700">${row[7]}</td>
+                    </tr>`;
+                });
+                document.getElementById("counterData").innerText = `Total: ${data.length} Anggota Terdaftar`;
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-red-500 text-center">Gagal memuat data!</td></tr>'; }
+        }
+
+        function filterTabel() {
+            const fCabang = document.getElementById("searchCabang").value.toLowerCase();
+            const fNama = document.getElementById("searchNama").value.toLowerCase();
+            const trs = document.getElementById("tabel-rekap-body").getElementsByTagName("tr");
+            let count = 0;
+
+            for (let i = 0; i < trs.length; i++) {
+                if (trs[i].cells.length < 8) continue;
+                const txtNama = trs[i].cells[1].innerText.toLowerCase();
+                const txtCabang = trs[i].cells[7].innerText.toLowerCase();
+                
+                const mCabang = fCabang === "" || txtCabang === fCabang;
+                const mNama = txtNama.includes(fNama);
+
+                if (mCabang && mNama) {
+                    trs[i].style.display = ""; count++;
+                } else {
+                    trs[i].style.display = "none";
+                }
+            }
+            document.getElementById("counterData").innerText = `Ditemukan: ${count} Anggota`;
+        }
+
+        function eksporKeExcel() {
+            const tabel = document.getElementById("tabelAnggota");
+            const wb = XLSX.utils.table_to_book(tabel);
+            XLSX.writeFile(wb, "Data_Anggota_PGRI_Sumedang.xlsx");
+        }
+    </script>
+</body>
+</html>
